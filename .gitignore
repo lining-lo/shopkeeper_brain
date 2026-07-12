@@ -1,0 +1,122 @@
+# ========== 通用 Python ==========
+.env
+.venv
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+temp_dir/
+temp_data/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ========== 依赖与缓存 ==========
+Pipfile.lock
+poetry.lock
+requirements.txt  # 可选：若用requirements管理，避免纳入版本，推荐用poetry/pipenv时保留
+.pipenv.lock
+
+# PyCharm / VSCode 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ========== LangChain/LangGraph ==========
+# 模型缓存与临时运行日志
+langchain.db/
+langchain_core.cache/
+.langchain/
+*.langchain.*
+
+# ========== Milvus ==========
+# Milvus 数据存储与日志（典型本地存储路径）
+milvus/
+.milvus/
+/var/lib/milvus/
+/var/log/milvus/
+# 若用本地文件模式的元数据/数据
+data/
+segments/
+index_files/
+# 临时快照与备份
+snapshots/
+backups/
+
+# ========== Mineru ==========
+# Mineru 缓存与输出文件
+.mineru/
+mineru_cache/
+outputs/
+# 中间过程文件（按需调整）
+tmp/
+
+# ========== MinIO ==========
+# MinIO 数据卷（本地开发时挂载的存储路径）
+minio_data/
+data/
+# MinIO 配置文件（含日志与临时文件）
+.minio/
+/var/log/minio/
+.minio.sys/
+
+# ========== 日志与临时文件 ==========
+logs/
+tmp/
+temp/
+*.log
+*.tmp
+*.swp
+*.swo
+
+# ========== 容器与运行时 ==========
+docker-compose.override.yml
+docker-compose.dev.yml
+# Docker 相关
+.dockerignore
+docker/
+*.dockerfile
+.docker/
+# Docker 网络与卷（开发环境临时资源）
+docker_networks/
+docker_volumes/
+
+# ========== 系统与临时文件 ==========
+.DS_Store
+Thumbs.db
+*.DS_Store?
+*.orig
+*.rej
+*.bak
+*~
+
+# ========== 自定义输出目录（按需调整，根据实际项目路径补充） ==========
+# 例如项目自定义的 outputs、data、cache 目录
+outputs/
+data/
+cache/
+temp_files/
+
+# ========== 其他（根据实际调整） ==========
+# 若含模型文件（如 HuggingFace 模型缓存，按需取舍）
+.huggingface/
+# 若本地运行的临时数据库文件
+*.db
+*.sqlite
