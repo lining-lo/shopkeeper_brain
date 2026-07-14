@@ -73,8 +73,8 @@ class EntryNode(BaseNode):
 
 if __name__ == "__main__":
     setup_logging()
-    import_file_path = "E:\\doc\\万用表RS-12的使用.pdf"
-    file_dir = "E:\\temp_dir"
+    import_file_path = "D:\查重_简洁报告单.pdf"
+    file_dir = "D:\资料"
     state = {
         "is_pdf_read_enabled": False,
         "is_md_read_enabled": False,
