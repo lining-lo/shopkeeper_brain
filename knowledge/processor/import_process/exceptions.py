@@ -1,13 +1,14 @@
 """
-导入流程自定义异常类
-
-统一错误处理，提供更清晰的错误信息
+  @Author:lining-lo
+  @Time:2026/7/13
+  @Desc:导入流程自定义异常类
 """
 
 
 class ImportProcessError(Exception):
     """导入流程基础异常"""
-    #类似构造函数，实例对象进行初始化
+
+    # 类似构造函数，实例对象进行初始化
     def __init__(self, message: str, node_name: str = "", cause: Exception = None):
         self.node_name = node_name
         self.cause = cause
@@ -23,12 +24,10 @@ class ImportProcessError(Exception):
         return " ".join(parts)
 
 
-
 class StateFieldError(ImportProcessError):
-    """状态字段错误。
-
+    """
+    状态字段错误。
     从 state 中获取必需字段缺失、为空或类型不符时抛出。
-
     Attributes:
         field_name: 缺失或无效的字段名称。
         expected_type: 期望的字段类型（可选）。

@@ -1,8 +1,9 @@
 """
-导入流程配置管理模块
-
-集中管理所有配置项，支持环境变量覆盖
+  @Author:lining-lo
+  @Time:2026/7/13
+  @Desc:集中管理所有配置项，支持环境变量覆盖
 """
+
 import threading
 from dataclasses import dataclass, field
 from typing import Set, Optional
@@ -20,6 +21,7 @@ __eq__() - 相等比较
 __hash__() - 哈希（可选）
 """
 
+
 @dataclass
 class ImportConfig:
     """导入流程配置"""
@@ -31,7 +33,6 @@ class ImportConfig:
     overlap_sentences: int = 1  # 句子级切分时的重叠句数
     item_name_chunk_k: int = 3  # 商品名识别时使用的切片数量
     item_name_chunk_size: int = 2500  # 商品名识别时使用的切片内容长度
-
 
     """
     对于你的场景（从环境变量读取配置），必须使用 field(default_factory=lambda: ...)，因为：
@@ -97,13 +98,11 @@ class ImportConfig:
     # ==================== 速率限制 ====================
     requests_per_minute: int = 10  # 图片总结 API 速率限制
 
-    #创建实例对象
+    # 创建实例对象
     @classmethod
     def from_env(cls) -> "ImportConfig":
         """从环境变量加载配置"""
         return cls()
-
-
 
     # http://192.168.6.150:9000/
     def get_minio_base_url(self):
@@ -117,13 +116,14 @@ class ImportConfig:
 # 注意线程安全：多线程环境需要加锁
 _config: Optional[ImportConfig] = None
 
-#_lock = threading.Lock()
+
+# _lock = threading.Lock()
 
 # 单例获取函数
 def get_config() -> ImportConfig:
     """获取配置单例"""
     global _config
-    #with _lock:  # 加锁保护
+    # with _lock:  # 加锁保护
     if _config is None:
         _config = ImportConfig.from_env()
     return _config

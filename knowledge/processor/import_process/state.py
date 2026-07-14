@@ -1,107 +1,60 @@
 """
-
-导入流程状态类型定义
-
-
-
-定义完整的状态结构和辅助函数
-
+  @Author:lining-lo
+  @Time:2026/7/13
+  @Desc:导入流程状态类型定义
 """
-
 from typing import TypedDict, List
-
 import copy
 
 
 class ImportGraphState(TypedDict, total=False):
     """
-
-    导入流程图状态
-
-
-
-    包含整个导入流程中传递的所有数据
-
+      文档导入流程全局状态
+      工作流节点之间传递的全部共享数据
     """
+    task_id: str  # 任务唯一ID，用于日志追踪、进度展示
+    is_md_read_enabled: bool  # 标识：源文件是否为 Markdown
+    is_pdf_read_enabled: bool  # 标识：源文件是否为 PDF（PDF 需要先转 MD）
 
-    # ==================== 任务标识 ====================
+    import_file_path: str  # 原始上传文件完整路径
+    file_dir: str  # 原始文件所在父目录
 
-    task_id: str  # 任务 ID，用于任务追踪(web交互的时候用到，实时看到节点的处理日志)
+    pdf_path: str  # PDF 文件完整路径
+    md_path: str  # Markdown 文件完整路径（原始MD / PDF转换后的MD）
+    file_title: str  # 文件名称（剔除后缀）
 
-    # ==================== 控制标志 ====================
-
-    is_md_read_enabled: bool  # 是否启用 MD 读取
-
-    is_pdf_read_enabled: bool  # 是否启用 PDF 读取   pdf需要转md
-
-    # ==================== 路径信息 ====================
-
-    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用.pdf
-    import_file_path: str  # 导入文件路径,pdf所在路径，文件及路径的全路径。
-
-    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\
-    file_dir: str  # 导入(出)文件目录，pdf转换为md存放的目录，父目录级别
-
-    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\
-    pdf_path: str  # PDF 文件路径，不含文件名称的pdf目录
-
-    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用_pipeline\auto\万用表RS-12的使用.md
-    md_path: str  # 转换后Markdown 文件路径，具体的文件及目录全路径。
-
-    # ==================== 文件信息 ====================
-
-    file_title: str  # 文件标题（不含扩展名）
-
-    item_name: str  # 识别出的商品/产品名称(方便程序员用)
-
-    # ==================== 处理中间数据 ====================
-
-    md_content: str  # Markdown 文档内容
-
-    chunks: List  # 文档切片列表
-
-    # ==================== 默认状态 ====================
+    item_name: str  # 从文档识别得到的产品/商品名称
+    md_content: str  # Markdown 完整文本内容
+    chunks: List  # 文档文本切片结果（用于后续向量化入库）
 
 
 GRAPH_DEFAULT_STATE: ImportGraphState = {
 
     "task_id": "",
-
     "is_pdf_read_enabled": False,
-
     "is_md_read_enabled": False,
 
+    "import_file_path": "",
     "file_dir": "",
 
-    "import_file_path": "",
-
     "pdf_path": "",
-
     "md_path": "",
-
     "file_title": "",
 
-    "md_content": "",
-
-    "chunks": [],
-
     "item_name": "",
+    "md_content": "",
+    "chunks": [],
 
 }
 
 
 def create_default_state(**overrides) -> ImportGraphState:
     """
-    创建默认状态，支持覆盖
-
-    Args:
-        **overrides: 要覆盖的字段
-
-    Returns:
-        新的状态实例
-
-    Examples:
-        >>> state = create_default_state(task_id="task_001", local_file_path="doc.pdf")
+      创建导入流程默认状态，支持自定义字段覆盖
+      Args:
+        **overrides: 自定义覆盖的状态字段
+      Returns:
+        ImportGraphState：新的流程状态字典
     """
     state = copy.deepcopy(GRAPH_DEFAULT_STATE)
     state.update(overrides)
@@ -110,9 +63,8 @@ def create_default_state(**overrides) -> ImportGraphState:
 
 def get_default_state() -> ImportGraphState:
     """
-    获取默认状态副本
-
-    Returns:
+      获取默认状态副本
+      Returns:
         状态副本（避免全局污染）
     """
     return copy.deepcopy(GRAPH_DEFAULT_STATE)

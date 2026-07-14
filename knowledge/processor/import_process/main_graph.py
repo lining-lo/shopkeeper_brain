@@ -1,13 +1,11 @@
 """
-导入流程主图
-
-使用LangGraph构建文档导入工作流
+  @Author:lining-lo
+  @Time:2026/7/13
+  @Desc:使用LangGraph构建文档导入工作流
 """
 import json
-
 from langgraph.constants import END
 from langgraph.graph.state import CompiledStateGraph, StateGraph
-
 from knowledge.processor.import_process.base import setup_logging
 from knowledge.processor.import_process.nodes.bge_embedding import BgeEmbeddingChunksNode
 from knowledge.processor.import_process.nodes.ducment_split import DocumentSplitNode
@@ -122,30 +120,22 @@ def run_import_graph(import_file_path: str, file_dir: str) -> dict:
         "import_file_path": import_file_path,
         "file_dir": file_dir
     }
-    # ** state 是 Python 的解包操作，将字典展开为关键字参数
-    # 相当于：create_default_state(import_file_path=..., file_dir=...)
-    # "is_pdf_read_enabled": False,  # 默认值
-    # "is_md_read_enabled": False,  # 默认值
-    # "md_path": None,  # 默认值
+
     init_state = create_default_state(**state)
     final_state = None
-    # 启动  LangGraph 工作流并流式执行（streaming execution）。
-    # kb_import_graph_app: 已编译的 LangGraph 应用对象
-    # .stream(state): 以流式方式执行工作流，每完成一个节点就 yield 一次结果
-    # event: 每次迭代返回的事件数据，包含当前节点的名称和更新后的状态
-    # 优势：可以实时看到每个节点的执行进度，而不是等待全部完成
-    for event in kb_import_graph_app.stream(state):
-        for node_name, state in event.items():  # 注意：这里使用了嵌套循环，因为一个事件可能包含多个节点的更新
-            final_state = state  # 循环结束后，final_state 保存的是最后一个节点执行后的状态
 
-    return final_state  # 返回工作流执行完成后的最终状态。
+    for event in kb_import_graph_app.stream(init_state):
+        for node_name, state in event.items():
+            final_state = state
+
+    return final_state
 
 
 if __name__ == "__main__":
     setup_logging()
 
-    import_file_path = r"D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用.pdf"
-    file_dir = r"D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir"
+    import_file_path = r"D:\资料\doc\万用表RS-12的使用.pdf"
+    file_dir = r"D:\资料\doc"
 
     final_state = run_import_graph(import_file_path, file_dir)
     print(json.dumps(final_state, indent=4, ensure_ascii=False))

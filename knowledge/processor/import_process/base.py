@@ -1,13 +1,13 @@
 """
-导入流程节点基类
-
-定义统一的节点接口规范，提供通用功能
+  @Author:lining-lo
+  @Time:2026/7/13
+  @Desc:定义统一的节点接口规范，提供通用功能
 """
+
 import time
 from abc import ABC, abstractmethod
 from typing import TypeVar, Optional
 import logging
-
 from knowledge.processor.import_process.config import ImportConfig, get_config
 from knowledge.processor.import_process.exceptions import ImportProcessError
 from knowledge.utils.task_util import add_running_task, add_done_task, add_node_duration
