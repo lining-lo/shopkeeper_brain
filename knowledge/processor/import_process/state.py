@@ -14,8 +14,6 @@ import copy
 
 
 class ImportGraphState(TypedDict, total=False):
-
-
     """
 
     导入流程图状态
@@ -38,16 +36,16 @@ class ImportGraphState(TypedDict, total=False):
 
     # ==================== 路径信息 ====================
 
-    #D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用.pdf
+    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用.pdf
     import_file_path: str  # 导入文件路径,pdf所在路径，文件及路径的全路径。
 
-    #D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\
+    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\
     file_dir: str  # 导入(出)文件目录，pdf转换为md存放的目录，父目录级别
 
-    #D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\
+    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\
     pdf_path: str  # PDF 文件路径，不含文件名称的pdf目录
 
-    #D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用_pipeline\auto\万用表RS-12的使用.md
+    # D:\workspace\python\PythonProject\shopkeeper_brain\knowledge\processor\import_process\temp_dir\万用表RS-12的使用_pipeline\auto\万用表RS-12的使用.md
     md_path: str  # 转换后Markdown 文件路径，具体的文件及目录全路径。
 
     # ==================== 文件信息 ====================
@@ -63,8 +61,6 @@ class ImportGraphState(TypedDict, total=False):
     chunks: List  # 文档切片列表
 
     # ==================== 默认状态 ====================
-
-
 
 
 GRAPH_DEFAULT_STATE: ImportGraphState = {
