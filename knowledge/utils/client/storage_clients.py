@@ -1,3 +1,9 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/15
+  @Desc:存储客户端统一管理器，封装 MinIO、Milvus、MongoDB 懒加载单例客户端，
+        继承BaseClientManager实现线程安全延迟初始化、环境变量校验与统一异常处理
+"""
 import logging
 import threading
 from typing import Optional
@@ -73,7 +79,6 @@ class StorageClients(BaseClientManager):
         except Exception as e:
             logger.error(f"Milvus 客户端初始化失败:{e}")
             raise ConnectionError(f"Milvus 连接:{e}") from e  # from e 保留原始异常的堆栈跟踪信息
-
 
     # ── MongoDB ──
 

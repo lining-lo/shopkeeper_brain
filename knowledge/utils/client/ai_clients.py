@@ -1,6 +1,14 @@
-import logging
+"""
+  @Author:lining-lo
+  @Time:2026/7/15
+  @Desc:
+    AI模型客户端统一管理器；
+    包含DashScope兼容OpenAI(VLM)、LangChain ChatOpenAI文本大模型、
+    BGE-M3向量化模型、BGE重排序模型；
+    继承BaseClientManager实现线程安全懒加载单例，内置环境变量校验与统一异常处理；
+    LLM区分普通文本模式与JSON结构化输出两套独立实例。
+"""
 import threading
-
 from langchain_openai import ChatOpenAI
 from openai import OpenAI
 from pymilvus.model.hybrid import BGEM3EmbeddingFunction
@@ -48,12 +56,15 @@ class AIClients(BaseClientManager):
     _openai_llm_json_lock = threading.Lock()
 
     @classmethod
-    def get_llm_openai(cls, response_format: bool=True) -> ChatOpenAI:
+    def get_llm_openai(cls, response_format: bool = True) -> ChatOpenAI:
         if response_format:
-            #_create_llm_openai(response_format) 加了 () 立即执行，应改为 lambda: 延迟执行
-            return cls._get_or_create("_openai_llm_json_client", cls._openai_llm_json_lock, lambda: cls._create_llm_openai(response_format))
+            # _create_llm_openai(response_format) 加了 () 立即执行，应改为 lambda: 延迟执行
+            return cls._get_or_create("_openai_llm_json_client", cls._openai_llm_json_lock,
+                                      lambda: cls._create_llm_openai(response_format))
         else:
-            return cls._get_or_create("_openai_llm_text_client", cls._openai_llm_text_lock, lambda: cls._create_llm_openai(response_format))
+            return cls._get_or_create("_openai_llm_text_client", cls._openai_llm_text_lock,
+                                      lambda: cls._create_llm_openai(response_format))
+
     @classmethod
     def _create_llm_openai(cls, response_format) -> ChatOpenAI:
         try:
@@ -110,7 +121,6 @@ class AIClients(BaseClientManager):
             logger.error(f"bge_m3客户端初始化失败:{e}")
             raise ConnectionError(f"bge_m3客户端创建失败:{e}") from e
 
-
     """
     BGE-M3重排序模型客户端：
     """
@@ -127,11 +137,11 @@ class AIClients(BaseClientManager):
             model_name_or_path = cls._require_env("BGE_RERANKER_LARGE")
             device = cls._require_env("BGE_DEVICE")
             fp16_str = cls._require_env("BGE_FP16")
-            fp16 = fp16_str.lower() in ("true","1")
+            fp16 = fp16_str.lower() in ("true", "1")
 
             reranker = FlagReranker(
                 model_name_or_path=model_name_or_path,
-                #model_name_or_path="D:\\ai_models\\modelscope_cache\\models\\BAAI\\BAAI\\bge-reranker-large",
+                # model_name_or_path="D:\\ai_models\\modelscope_cache\\models\\BAAI\\BAAI\\bge-reranker-large",
                 device=device,  # GPU 加速
                 use_fp16=fp16  # 半精度推理
             )

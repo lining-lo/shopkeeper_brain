@@ -6,9 +6,11 @@
 
 import json
 from pathlib import Path
+from pprint import pprint
+
 from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import ValidationError
-from knowledge.processor.import_process.state import ImportGraphState
+from knowledge.processor.import_process.state import ImportGraphState, create_default_state
 
 
 class EntryNode(BaseNode):
@@ -73,19 +75,15 @@ class EntryNode(BaseNode):
 
 if __name__ == "__main__":
     setup_logging()
-    import_file_path = "D:\查重_简洁报告单.pdf"
-    file_dir = "D:\资料"
-    state = {
-        "is_pdf_read_enabled": False,
+
+    init = {
+        "is_pdf_read_enabled": True,
         "is_md_read_enabled": False,
-        "import_file_path": import_file_path,
-        "file_dir": file_dir
+        "import_file_path": "D:\查重_简洁报告单.pdf",
+        "file_dir": "D:\资料"
     }
+    state = create_default_state(**init)
+    node = EntryNode()
+    processed_state = node(state)
 
-    entry = EntryNode()
-
-    processed_state = entry(state)  # __call__ -> process()
-
-    # entry.process(state)
-
-    print(json.dumps(processed_state, indent=4, ensure_ascii=False))
+    pprint(processed_state)

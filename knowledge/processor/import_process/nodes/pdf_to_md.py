@@ -3,14 +3,14 @@
   @Time:2026/7/14
   @Desc:pdf转md节点，用MinerU将pdf转化为md
 """
-import json
 import subprocess
 from pathlib import Path
+from pprint import pprint
 from typing import Tuple
 
 from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import ValidationError, FileProcessingError, PdfConversionError
-from knowledge.processor.import_process.state import ImportGraphState
+from knowledge.processor.import_process.state import ImportGraphState, create_default_state
 
 
 class PdfToMdNode(BaseNode):
@@ -106,10 +106,17 @@ class PdfToMdNode(BaseNode):
 if __name__ == "__main__":
     setup_logging()
 
-    state = {
-        "import_file_path": r"D:\查重_简洁报告单.pdf",
-        "pdf_path": r"D:\temp_out"
+    init = {
+        "is_pdf_read_enabled": True,
+        "is_md_read_enabled": False,
+        "import_file_path": "D:\\查重_简洁报告单.pdf",
+        "file_dir": "D:\\资料",
+        "pdf_path": "D:\\查重_简洁报告单.pdf",
+        "file_title": "查重_简洁报告单",
     }
+
+    state = create_default_state(**init)
     node = PdfToMdNode()
     result = node(state)
-    print(result)
+
+    pprint(result)
