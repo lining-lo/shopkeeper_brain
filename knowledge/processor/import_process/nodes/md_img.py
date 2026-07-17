@@ -6,16 +6,20 @@
             调用VLM视觉模型结合上下文生成图片描述摘要 → 图片上传MinIO、替换MD本地图片路径为云端URL、文档备份；
     分层设计：MdFileHandler文件读写、ImageScanner上下文解析、VLMSummarizer摘要、ImageUploader上传处理，职责隔离。
 """
+import base64
 import re
 from dataclasses import dataclass
 from logging import Logger
 from pathlib import Path
 from pprint import pprint
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 
-from knowledge.processor.import_process.base import BaseNode, T
+from langchain_openai import OpenAI
+
+from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import StateFieldError, FileProcessingError, ValidationError
 from knowledge.processor.import_process.state import ImportGraphState, create_default_state
+from knowledge.utils.client.ai_clients import AIClients
 
 
 # ── 数据模型 ──
@@ -72,8 +76,9 @@ class ImageScanner:
         self.logger = logger
         self.node_name = node_name
 
-    def scan_img_dir(self, md_content:str, images_dir: Path, image_extensions: set[str], context_length: int = 200) -> List[
-        ImageInfo]:
+    def scan_img_dir(self, md_content: str, images_dir: Path, image_extensions: set[str], context_length: int = 200) -> \
+            List[
+                ImageInfo]:
         """
         扫描MD文档，找到每一个图片的上下文信息，返回一个图片信息列表
         :param md_content: 完整md文档字符串
@@ -93,17 +98,17 @@ class ImageScanner:
                 # raise ValidationError(f"图片{image_path} - 后缀格式{image_path.suffix}错误", self.node_name)
                 continue
 
-            #查找图片上下文,如果表格图片，在md_content中可能找不到，返回None上下文ImageContext对象
-            ctx = self._find_context(md_content,image_path.name,context_length)
+            # 查找图片上下文,如果表格图片，在md_content中可能找不到，返回None上下文ImageContext对象
+            ctx = self._find_context(md_content, image_path.name, context_length)
             if ctx is None:
                 continue
 
-            image_info_list.append(ImageInfo(name=image_path.name,path=image_path,context=ctx))
+            image_info_list.append(ImageInfo(name=image_path.name, path=image_path, context=ctx))
 
         return image_info_list
 
     # 三种写法都行
-    #def _find_context(self, image_path, md_content, context_length) -> Optional[ImageContext] :
+    # def _find_context(self, image_path, md_content, context_length) -> Optional[ImageContext] :
     # def _find_context(self, image_path, md_content, context_length) -> ImageContext | None :
     # def _find_context(self, image_path, md_content, context_length) -> ImageContext or None :
 
@@ -114,7 +119,7 @@ class ImageScanner:
         pattern = re.compile(
             r"!\[.*?\]\(.*?" + re.escape(img_name) + r".*?\)"
         )
-        #将md文档拆成一行一行的字符串元素集合
+        # 将md文档拆成一行一行的字符串元素集合
         md_lines = md_content.split("\n")
 
         for line_idx, line in enumerate(md_lines):
@@ -122,7 +127,7 @@ class ImageScanner:
                 continue
 
             # 向上：找最近标题，取标题到图片之间的内容作为上文
-            prev_title, prev_boundary = self._find_heading_above( md_lines, line_idx )
+            prev_title, prev_boundary = self._find_heading_above(md_lines, line_idx)
             pre_content = md_lines[prev_boundary + 1: line_idx]
             img_pre = self._extract_limited_context(pre_content, max_chars, direction="front")
 
@@ -206,8 +211,90 @@ class VLMSummarizer:
         self.logger = logger
         self.node_name = node_name
 
-    def summarizer_all(self):
-        pass
+    def summarize_all(self, document_name: str, imageinfo_list: List[ImageInfo], vl_model: str) -> Dict[str, str]:
+        """
+        摘要生成，返回图片信息列表
+        :param document_name: 文件名称 不带扩展名称
+        :param imageinfo_list: 图片信息列表（图片标题、上文、下文）
+        :param vl_model: VLML视觉语言模型名称
+        :param requests_per_minute: 调用模型频率限制
+        :return:
+            {
+                '01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg': '万用表RS-12直流电流测量接线示意图（10A档位）',
+                '10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg': '蜂鸣器功能符号指示',
+                '115adcddd73aeacbccd21861a542e8c23f78937f8680317548ea8393bcb0801b.jpg': '中文说明书标识',
+            }
+        """
+        summaries: Dict[str, str] = {}
+
+        try:
+            openai_client = AIClients.get_openai()
+        except Exception as e:
+            # 降级处理
+            self.logger.error(f"获取OpenAI客户端失败: {e}")
+            for image_info in imageinfo_list:
+                summaries[image_info.name] = "默认图片摘要"
+            self.logger.info(f"降级生成 {len(summaries)} 张图片摘要")
+            return summaries
+
+        for image_info in imageinfo_list:
+            # 调用VLM获取摘要
+            summary = self._summarize_one(image_info, openai_client, vl_model, document_name)
+            summaries[image_info.name] = summary
+        self.logger.info(f"生成 {len(summaries)} 张图片摘要")
+        return summaries
+
+    def _summarize_one(self, image_info: ImageInfo, openai_client: OpenAI, vl_model: str, document_name: str) -> str:
+        """
+        调用VLM获取摘要
+        :param image_info: 图片上下文信息
+        :param openai_client: VLM模型客户端对象  单例
+        :param vl_model:   VLM模型名称  Qwen3-vl-flash
+        :param document_name: 文件名称 不带扩展名称   用于生成图片摘要的提示词内容
+        :return:
+            图片摘要
+        """
+        parts = [p for p in (image_info.context.heading, image_info.context.pre_text, image_info.context.post_text) if
+                 p]
+        final_context = "\n".join(parts)
+
+        # 图片转 Base64
+        with open(image_info.path, "rb") as f:
+            base64_image = base64.b64encode(f.read()).decode("utf-8")
+
+        # 调用 VLM
+        response = openai_client.chat.completions.create(
+            model=vl_model,  # 视觉模型
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",  # 告诉 API：这是一段文字
+                            "text": (
+                                f"任务：为Markdown文档中的图片生成一个简短的中文标题。\n"
+                                f"背景信息：\n"
+                                f"  1. 所属文档标题：\"{document_name}\"\n"
+                                f"  2. 图片上下文：{final_context}\n"
+                                f"请结合图片内容和上述上下文信息，"
+                                f"用中文简要总结这张图片的内容，"
+                                f"生成一个精准的中文标题（不要包含图片二字）。"
+                            ),
+                        },
+                        {
+                            "type": "image_url",  # 告诉 API：这是一张图片
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=100
+        )
+
+        summary = response.choices[0].message.content
+        return summary
 
 
 # -------4.图片存储(minio) & 替换-------------
@@ -252,9 +339,11 @@ class MarkDownImageNode(BaseNode):
                                                                           image_extensions=self.config.image_extensions,
                                                                           # {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
                                                                           context_length=self.config.img_content_length)  # img_content_length: int = 200  # 图片上下文最大长度
-        print(imageinfo_list)
-        # 3.vlm生成图片摘要
-
+        # 3.vlm(视觉语言模型  图生文)生成图片摘要
+        summaries: Dict[str, str] = self.vlm_summarizer.summarize_all(document_name=md_path_obj.stem,
+                                                                      imageinfo_list=imageinfo_list,
+                                                                      vl_model=self.config.vl_model)
+        print(summaries)
         # 4.上传图片到Minio,替换MD中图片的路径，插入摘要信息
 
         # 5.备份替换后的MD文档
@@ -262,8 +351,8 @@ class MarkDownImageNode(BaseNode):
         return state
 
 
-
 if __name__ == "__main__":
+    setup_logging()
     init = {
         "is_pdf_read_enabled": True,
         "is_md_read_enabled": False,
@@ -275,5 +364,4 @@ if __name__ == "__main__":
     }
     state = create_default_state(**init)
     node = MarkDownImageNode()
-
     pprint(node(state))
