@@ -8,10 +8,14 @@
 """
 import base64
 import re
+import time
+from collections import deque
 from dataclasses import dataclass
+
 from logging import Logger
 from pathlib import Path
 from pprint import pprint
+from threading import Lock
 from typing import Tuple, List, Optional, Dict
 
 from langchain_openai import OpenAI
@@ -210,8 +214,11 @@ class VLMSummarizer:
     def __init__(self, logger: Logger, node_name: str):
         self.logger = logger
         self.node_name = node_name
+        self.stampts_deque: Deque[float] = deque()
+        self.lock: Lock = Lock()
 
-    def summarize_all(self, document_name: str, imageinfo_list: List[ImageInfo], vl_model: str) -> Dict[str, str]:
+    def summarize_all(self, document_name: str, imageinfo_list: List[ImageInfo], vl_model: str,
+                      requests_per_minute: int = 5) -> Dict[str, str]:
         """
         摘要生成，返回图片信息列表
         :param document_name: 文件名称 不带扩展名称
@@ -226,6 +233,7 @@ class VLMSummarizer:
             }
         """
         summaries: Dict[str, str] = {}
+        # stampts_deque: Deque[float] = deque()   不能每次请求都创建一个新的队列。多个请求共用一个队列。
 
         try:
             openai_client = AIClients.get_openai()
@@ -238,6 +246,9 @@ class VLMSummarizer:
             return summaries
 
         for image_info in imageinfo_list:
+            # 限流  requests_per_minute
+            self._enforce_rate_limit(requests_per_minute)
+
             # 调用VLM获取摘要
             summary = self._summarize_one(image_info, openai_client, vl_model, document_name)
             summaries[image_info.name] = summary
@@ -296,6 +307,28 @@ class VLMSummarizer:
         summary = response.choices[0].message.content
         return summary
 
+    def _enforce_rate_limit(self, requests_per_minute, window: int = 60):
+        """
+        滑动窗口限流
+        :param stampts_deque: 存放每次请求时间戳  1970年1月1日00:00:00
+        :param requests_per_minute:   每分钟请求次数限制 默认10
+        """
+        with self.lock:
+            now = time.time()  # 获取当前时间戳
+
+            while self.stampts_deque and now - self.stampts_deque[0] > window:
+                self.stampts_deque.popleft()  # 删除队首元素
+
+            if len(self.stampts_deque) >= requests_per_minute:
+                sleep_duration = window - (now - self.stampts_deque[0])
+                if sleep_duration > 0:
+                    time.sleep(sleep_duration)
+                now = time.time()
+                while self.stampts_deque and now - self.stampts_deque[0] > window:
+                    self.stampts_deque.popleft()  # 删除队首元素
+
+            self.stampts_deque.append(now)
+
 
 # -------4.图片存储(minio) & 替换-------------
 class ImageUploader:
@@ -342,7 +375,8 @@ class MarkDownImageNode(BaseNode):
         # 3.vlm(视觉语言模型  图生文)生成图片摘要
         summaries: Dict[str, str] = self.vlm_summarizer.summarize_all(document_name=md_path_obj.stem,
                                                                       imageinfo_list=imageinfo_list,
-                                                                      vl_model=self.config.vl_model)
+                                                                      vl_model=self.config.vl_model,
+                                                                      requests_per_minute=self.config.requests_per_minute)
         print(summaries)
         # 4.上传图片到Minio,替换MD中图片的路径，插入摘要信息
 
