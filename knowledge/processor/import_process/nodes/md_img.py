@@ -11,19 +11,17 @@ import re
 import time
 from collections import deque
 from dataclasses import dataclass
-
 from logging import Logger
 from pathlib import Path
 from pprint import pprint
-from threading import Lock
-from typing import Tuple, List, Optional, Dict
-
+from threading import RLock, Lock
+from typing import Tuple, List,Dict, Deque
 from langchain_openai import OpenAI
-
 from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import StateFieldError, FileProcessingError, ValidationError
 from knowledge.processor.import_process.state import ImportGraphState, create_default_state
 from knowledge.utils.client.ai_clients import AIClients
+from knowledge.utils.client.storage_clients import StorageClients
 
 
 # ── 数据模型 ──
@@ -52,7 +50,8 @@ class MdFileHandler:
         self.node_name = node_name
 
     def read_md(self, state: ImportGraphState) -> Tuple[str, Path, Path]:
-
+        """读取MD文件内容，返回MD内容、MD路径、图片路径"""
+        self.logger.info("读取MD文件内容，返回MD内容、MD路径、图片路径")
         md_path = state.get("md_path", "")
         if not md_path:
             raise StateFieldError(node_name=self.node_name,
@@ -66,11 +65,20 @@ class MdFileHandler:
             md_content = f.read()
 
         images_dir = md_path_obj.parent / "images"
-
+        print(type(images_dir))
         return md_content, md_path_obj, images_dir
 
-    def backup(self):
-        pass
+    def backup(self, md_path_obj: Path, new_md_content: str):
+        """
+        备份替换image摘要和地址后的  新MD文档
+        :param md_path_obj: 旧md文件路径
+        :param new_md_content: 新md文档内容
+        """
+        self.logger.info("备份新MD文档")
+        # 万用表RS-12的使用.md  ->   万用表RS-12的使用_new.md
+        backup_path = md_path_obj.with_name(md_path_obj.stem + "_new.md")
+        with open(backup_path, 'w', encoding='utf-8') as f:
+            f.write(new_md_content)
 
 
 # -------2.图片上下文-------------
@@ -83,14 +91,12 @@ class ImageScanner:
     def scan_img_dir(self, md_content: str, images_dir: Path, image_extensions: set[str], context_length: int = 200) -> \
             List[
                 ImageInfo]:
-        """
-        扫描MD文档，找到每一个图片的上下文信息，返回一个图片信息列表
-        :param md_content: 完整md文档字符串
-        :param images_dir: 图片所在路径
-        :param image_extensions: {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
-        :param context_length: 上文或下文最大长度
-        :return:List[ImageInfo]
-        """
+        # 扫描MD文档，找到每一个图片的上下文信息，返回一个图片信息列表
+        # :param md_content: 完整md文档字符串
+        # :param images_dir: 图片所在路径  E:\temp_dir\万用表RS-12的使用\auto\images
+        # :param image_extensions: {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+        # :param context_length: 上文或下文最大长度
+        # :return:List[ImageInfo]
         image_info_list: List[ImageInfo] = []
 
         for image_path in images_dir.iterdir():
@@ -309,7 +315,7 @@ class VLMSummarizer:
 
     def _enforce_rate_limit(self, requests_per_minute, window: int = 60):
         """
-        滑动窗口限流
+        限流处理：
         :param stampts_deque: 存放每次请求时间戳  1970年1月1日00:00:00
         :param requests_per_minute:   每分钟请求次数限制 默认10
         """
@@ -336,8 +342,109 @@ class ImageUploader:
         self.logger = logger
         self.node_name = node_name
 
-    def upload_and_replace(self):
-        pass
+    def upload_and_replace(self, document_name: str, md_content: str, imageinfo_list: List[ImageInfo],
+                           summaries: Dict[str, str], minio_bucket: str,
+                           minio_endpoint: str):
+        """
+        上传图片到Minio  和   替换md 中 图片摘要和路径
+        :param document_name: 文件名称 不带扩展名称
+        :param images_dir: 图片目录
+        :param md_content: md文件内容
+        :param imageinfo_list: 图片信息列表(上下文)
+        :param summaries: 图片和摘要的字典
+        :param minio_bucket: 图片上传到指定Minio中的桶
+        :param minio_endpoint: Minio地址
+        :return: new_md_content  替换后的md内容
+        """
+        # 图片名称 对应 远程图片URL 字典
+        remote_urls: Dict[str, str] = self._upload_all(imageinfo_list, document_name, minio_bucket, minio_endpoint)
+
+        # 摘要和路径替换  返回新的md内容
+        new_md_content = self._replace_in_md(remote_urls=remote_urls,
+                                             md_content=md_content,
+                                             imageinfo_list=imageinfo_list,
+                                             summaries=summaries)
+
+        return new_md_content
+
+    def _upload_all(self, imageinfo_list: List[ImageInfo], document_name: str, minio_bucket: str,
+                    minio_endpoint: str) -> Dict[str, str]:
+        """
+        图片上传到minio
+        :param imageinfo_list: 图片信息列表
+        :param document_name:  文件名称
+        :param minio_bucket:  桶
+        :param minio_endpoint:  minio地址
+        :return:
+            remote_urls: Dict[str, str]  图片名称 对应 远程图片URL 字典
+             {
+                '01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg': 'http://192.168.6.160:9000/knowledge-base-files/万用表RS-12的使用/01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg',
+                '10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg': 'http://192.168.6.160:9000/knowledge-base-files/万用表RS-12的使用/10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg',
+            }
+        """
+        remote_urls: Dict[str, str] = {}
+
+        # 1.获取Minio服务器连接
+        try:
+            minio_client = StorageClients.get_minio_client()
+        except Exception as e:
+            # 主降级处理，当连接获取不到，所有图片都降级处理
+            for image_info in imageinfo_list:
+                remote_urls[image_info.name] = image_info.path
+            return remote_urls
+
+        # 2.循环上传图片
+        for image_info in imageinfo_list:
+            try:
+                minio_client.fput_object(bucket_name=minio_bucket,  # 上传指定的桶名称
+                                         object_name=f"{document_name}/{image_info.name}",  # 上传后图片名称（带目录名称）
+                                         file_path=image_info.path)  # 本地图片
+                remote_url = f"{minio_endpoint}/{minio_bucket}/{document_name}/{image_info.name}"
+                remote_urls[image_info.name] = remote_url  # 上传成功，设置为远程地址
+            except Exception as e:
+                # 二级降级处理  只针对上传失败某个图片进行降级,设置为本地图片地址
+                remote_urls[image_info.name] = image_info.path
+        return remote_urls
+
+    def _replace_in_md(self, remote_urls: Dict[str, str], md_content: str, imageinfo_list: List[ImageInfo],
+                       summaries: Dict[str, str]) -> str:
+        """
+        图片的 摘要和路径  替换  返回新的md内容
+
+            利用正则表达式查找MD中的图片：  ![]()
+                ![](images/e92ffd955b1ca1fd14290da681a763771c958cbcf0a73a332107f471f96c29b2.jpg)
+
+
+            summaries = {
+                '01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg': '万用表RS-12直流电流测量接线示意图（10A档位）',
+                '10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg': '蜂鸣器功能符号指示'
+            }
+            remote_urls = {
+                '01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg': 'http://192.168.6.160:9000/bucket/01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg',
+                '10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg': 'http://192.168.6.160:9000/bucket/10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg'
+            }
+
+            ![万用表RS-12直流电流测量接线示意图（10A档位）](http://192.168.6.160:9000/bucket/01ff135dc95789f7cb428c34df92a77869db4f4e70b83d663d1c485a17e416c1.jpg)
+            ![蜂鸣器功能符号指示](http://192.168.6.160:9000/bucket/10d2f007e02047a07d46e75a81db7f96811916c0f5ff662fa23ce215dadcbbe1.jpg)
+
+        :param remote_urls:  图片名称 对应 远程图片URL 字典
+        :param md_content:  md文件内容
+        :param imageinfo_list:  图片信息列表
+        :param summaries:  图片名和摘要  字典
+        :return: 新md文档内容
+        """
+
+        pattern = re.compile(r"!\[(.*?)\]\((.*?)\)")
+
+        def replacer(match):
+            original_url = match.group(2).strip()  # 匹配到的图片本地地址
+            image_url_md = Path(original_url).name  # 图片在md中的文件名称，带扩展名
+            for image_name, summary in summaries.items():
+                if image_name == image_url_md:
+                    return f"![{summary}]({remote_urls[image_name]})"  # 匹配内容被替换后结果
+            return match.group(0)  # 正则表达式匹配到的原文
+
+        return pattern.sub(replacer, md_content)
 
 
 class MarkDownImageNode(BaseNode):
@@ -372,15 +479,25 @@ class MarkDownImageNode(BaseNode):
                                                                           image_extensions=self.config.image_extensions,
                                                                           # {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
                                                                           context_length=self.config.img_content_length)  # img_content_length: int = 200  # 图片上下文最大长度
+
         # 3.vlm(视觉语言模型  图生文)生成图片摘要
         summaries: Dict[str, str] = self.vlm_summarizer.summarize_all(document_name=md_path_obj.stem,
                                                                       imageinfo_list=imageinfo_list,
                                                                       vl_model=self.config.vl_model,
                                                                       requests_per_minute=self.config.requests_per_minute)
         print(summaries)
+
         # 4.上传图片到Minio,替换MD中图片的路径，插入摘要信息
+        # 替换图片路径和摘要的md文件内容。
+        new_md_content: str = self.image_uploader.upload_and_replace(document_name=md_path_obj.stem,
+                                                                     md_content=md_content,
+                                                                     imageinfo_list=imageinfo_list,
+                                                                     summaries=summaries,
+                                                                     minio_bucket=self.config.minio_bucket,
+                                                                     minio_endpoint=self.config.get_minio_base_url())
 
         # 5.备份替换后的MD文档
+        self.md_file_handler.backup(md_path_obj, new_md_content)
 
         return state
 
