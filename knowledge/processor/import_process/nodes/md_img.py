@@ -495,6 +495,7 @@ class MarkDownImageNode(BaseNode):
                                                                      summaries=summaries,
                                                                      minio_bucket=self.config.minio_bucket,
                                                                      minio_endpoint=self.config.get_minio_base_url())
+        state['md_content'] = new_md_content
 
         # 5.备份替换后的MD文档
         self.md_file_handler.backup(md_path_obj, new_md_content)
