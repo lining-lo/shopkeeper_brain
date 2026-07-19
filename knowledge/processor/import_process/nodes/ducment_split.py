@@ -1,7 +1,9 @@
 """
   @Author:lining-lo
   @Time:2026/7/18
-  @Desc:文档切割节点
+  @Desc:文档切割节点：对md文档分层拆分，输出结构化知识库切片
+        参数校验 → 按标题分层初分 → 超长拆分/过短合并 → 组装标准分片 → 日志+备份
+        识别1-6级标题、自动维护层级父标题、忽略代码块内标题、表格转纯文本、控制切片长度
 """
 import json
 import os
@@ -36,6 +38,8 @@ class DocumentSplitNode(BaseNode):
         # 6.数据备份
         self._backup_chunks(state, final_chunks)
 
+        # 状态值设置
+        state["chunks"] = final_chunks
         return state
 
     # ==================================================================================
@@ -105,7 +109,8 @@ class DocumentSplitNode(BaseNode):
         is_fence = False  # 是否在代码围挡内容
 
         # 1.获取所有行集合
-        lines: List[str] = md_content.split("\n")
+        # lines: List[str] = md_content.split("\n")
+        lines: List[str] = [p.strip() for p in md_content.split("\n") if p.strip()]
 
         def _flush():
             """专业封装section"""
@@ -120,7 +125,7 @@ class DocumentSplitNode(BaseNode):
 
                 # 降级处理： 当前标题没有父标题时，用当前标题作为父标题。比用文件名作为父标题好一些（信息更精准些）。
                 if not parent_title:
-                    parent_title = parent_title if parent_title else title
+                    parent_title = title if title else file_title
 
                 # 封装section
                 section = {
@@ -239,7 +244,7 @@ class DocumentSplitNode(BaseNode):
                 "title": title,
                 "parent_title": parent_title,
                 "file_title": file_title,
-                "body": f"{title}-{index + 1} {text}",
+                "body": text,
                 "part": index + 1
             })
 
@@ -271,6 +276,7 @@ class DocumentSplitNode(BaseNode):
             if same_title and len(current_section.get("body")) < min_content_length:
                 current_section["body"] = current_section["body"].rstrip() + "\n\n" + next_section["body"].lstrip()
                 current_section["title"] = current_section["parent_title"]
+                current_section["part"] = 0
             else:
                 final_sections.append(current_section)  # 遇到不同父标题，把之前同一个标题合并内容封箱。
                 current_section = next_section  # 重置
@@ -278,7 +284,20 @@ class DocumentSplitNode(BaseNode):
         # 添加最后一部分
         final_sections.append(current_section)
 
-        return final_sections
+        # 4. 对所有 section 的 part 做处理
+        part_counter = {}
+        result = []
+        for final_section in final_sections:
+            if "part" in final_section:
+                parent_title = final_section.get('parent_title')
+                part_counter[parent_title] = part_counter.get(parent_title, 0) + 1
+                new_part = part_counter[parent_title]
+                final_section['part'] = new_part
+                final_section['title'] = final_section['title'] + f"- {new_part}"
+
+            result.append(final_section)
+
+        return result
 
     # ==================================================================================
     #          4.组装切片
@@ -318,13 +337,18 @@ class DocumentSplitNode(BaseNode):
         final_chunks: List[Dict[str, Any]] = []
 
         for section in final_sections:
-            final_chunks.append({
+            chunk = {
                 "title": section["title"],
                 "parent_title": section["parent_title"],
                 "file_title": section["file_title"],
                 "content": section["title"] + "\n\n" + section["body"]
-            })
+            }
 
+            # 3. 判断 part 是否存在
+            if "part" in section:
+                chunk['part'] = section.get('part')
+
+            final_chunks.append(chunk)
         return final_chunks
 
     # ------------------------------------------------------------------ #
