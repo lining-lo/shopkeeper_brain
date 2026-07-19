@@ -3,17 +3,19 @@
   @Time:2026/7/18
   @Desc:文档切割节点
 """
+import json
+import os
 import re
 from typing import List, Any, Dict
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from knowledge.processor.import_process.base import BaseNode, setup_logging
-from knowledge.processor.import_process.exceptions import StateFieldError, ValidationError
+from knowledge.processor.import_process.base import BaseNode, T, setup_logging
+from knowledge.processor.import_process.exceptions import ValidationError
 from knowledge.processor.import_process.state import ImportGraphState, create_default_state
 from knowledge.utils.markdown_util import MarkdownTableLinearizer
 
 
 class DocumentSplitNode(BaseNode):
-    name: str = "document_split_node"
+    name = "document_split_node"
 
     def process(self, state: ImportGraphState) -> ImportGraphState:
         # 1.获取输入参数并且校验：  md_content,file_title,max_content_length,min_content_length
@@ -23,14 +25,16 @@ class DocumentSplitNode(BaseNode):
         sections: List[dict[str, Any]] = self._split_by_title(md_content, file_title)
 
         # 3.长切短合
-        final_sections: List[dict[str, Any]] = self._split_long_merge_short(sections, max_content_length,
-                                                                            min_content_length)
+        final_sections = self._split_long_merge_short(sections, max_content_length, min_content_length)
 
         # 4.组装切片
+        final_chunks = self._assemble_chunk(final_sections)
 
         # 5.日志记录
+        self._log_summary(md_content, final_chunks, max_content_length)
 
         # 6.数据备份
+        self._backup_chunks(state, final_chunks)
 
         return state
 
@@ -275,6 +279,92 @@ class DocumentSplitNode(BaseNode):
         final_sections.append(current_section)
 
         return final_sections
+
+    # ==================================================================================
+    #          4.组装切片
+    # ==================================================================================
+    def _assemble_chunk(self, final_sections) -> List[Dict[str, Any]]:
+        """
+        :param final_sections:
+            sections = [{
+                        "title": "## 安全手册",
+                        "parent_title": "# 手册",
+                        "file_title": "万用表手册",
+                        "body": "为了您的安全，请在使用本仪表之前仔细阅读该手册。。。。。。。"
+                    },
+                    {
+                        "title": "## 安全手册",
+                        "parent_title": "# 手册",
+                        "file_title": "万用表手册",
+                        "body": "为了您的安全，请在使用本仪表之前仔细阅读该手册。。。。。。。"
+                    }
+                ]
+        :return:
+             chunks = [{
+                        "title": "## 安全手册",
+                        "parent_title": "# 手册",
+                        "file_title": "万用表手册",
+                        "content": "title" + "body"
+                    },
+                    {
+                        "title": "## 安全手册",
+                        "parent_title": "# 手册",
+                        "file_title": "万用表手册",
+                        "content": "title" + "body"
+                    }
+                ]
+        """
+        self.log_step("step4", "组装切片")
+        final_chunks: List[Dict[str, Any]] = []
+
+        for section in final_sections:
+            final_chunks.append({
+                "title": section["title"],
+                "parent_title": section["parent_title"],
+                "file_title": section["file_title"],
+                "content": section["title"] + "\n\n" + section["body"]
+            })
+
+        return final_chunks
+
+    # ------------------------------------------------------------------ #
+    #                       日志 & 备份                                    #
+    # ------------------------------------------------------------------ #
+
+    def _log_summary(self, raw_content: str, chunks: List[dict], max_length: int):
+        """输出切分统计信息"""
+        self.log_step("step5", "输出统计")
+
+        lines_count = raw_content.count("\n") + 1
+        self.logger.info(f"原文档行数: {lines_count}")
+        self.logger.info(f"最终切分章节数: {len(chunks)}")
+        self.logger.info(f"最大切片长度: {max_length}")
+
+        if chunks:
+            self.logger.info("章节预览:")
+            for i, sec in enumerate(chunks[:5]):
+                title = sec.get("title", "")[:30]
+                self.logger.info(f"  {i + 1}. {title}...")
+            if len(chunks) > 5:
+                self.logger.info(f"  ... 还有 {len(chunks) - 5} 个章节")
+
+    def _backup_chunks(self, state: ImportGraphState, sections: List[dict]):
+        """将切分结果备份到 JSON 文件"""
+        self.log_step("step6", "备份切片")
+
+        local_dir = state.get("file_dir", "")
+        if not local_dir:
+            self.logger.debug("未设置 file_dir，跳过备份")
+            return
+
+        try:
+            os.makedirs(local_dir, exist_ok=True)
+            output_path = os.path.join(local_dir, "chunks.json")
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(sections, f, ensure_ascii=False, indent=2)  # json.dump() 具有写操作能力    注意： 不是json.dumps()
+            self.logger.info(f"已备份到: {output_path}")
+        except Exception as e:
+            self.logger.warning(f"备份失败: {e}")
 
 
 if __name__ == '__main__':
