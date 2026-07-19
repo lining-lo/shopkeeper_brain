@@ -5,10 +5,11 @@
 """
 import re
 from typing import List, Any, Dict
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from knowledge.processor.import_process.base import BaseNode, setup_logging
 from knowledge.processor.import_process.exceptions import StateFieldError, ValidationError
 from knowledge.processor.import_process.state import ImportGraphState, create_default_state
+from knowledge.utils.markdown_util import MarkdownTableLinearizer
 
 
 class DocumentSplitNode(BaseNode):
@@ -22,6 +23,8 @@ class DocumentSplitNode(BaseNode):
         sections: List[dict[str, Any]] = self._split_by_title(md_content, file_title)
 
         # 3.长切短合
+        final_sections: List[dict[str, Any]] = self._split_long_merge_short(sections, max_content_length,
+                                                                            min_content_length)
 
         # 4.组装切片
 
@@ -31,10 +34,9 @@ class DocumentSplitNode(BaseNode):
 
         return state
 
-        # ==================================================================================
-        #          1.获取并校验参数
-        # ==================================================================================
-
+    # ==================================================================================
+    #          1.获取并校验参数
+    # ==================================================================================
     def _validate_get_input(self, state):
         self.log_step("step1", "数据获取并校验")
         # 1.获取输入参数并且校验：  md_content,file_title,max_content_length,min_content_length
@@ -60,10 +62,9 @@ class DocumentSplitNode(BaseNode):
 
         return md_content, file_title, max_content_length, min_content_length
 
-        # ==================================================================================
-        #          2.用标题初切
-        # ==================================================================================
-
+    # ==================================================================================
+    #          2.用标题初切
+    # ==================================================================================
     def _split_by_title(self, md_content: str, file_title: str) -> List[dict[str, Any]]:
         """
             按照标题切分：按\n获取文档行的集合。遍历，判断是否存在代码围挡，正则表达式识别标题；构建section
@@ -152,6 +153,128 @@ class DocumentSplitNode(BaseNode):
         _flush()
 
         return sections  # 按照标题进行初切结果列表
+
+    # ==================================================================================
+    #          3.长切短合
+    # ==================================================================================
+    def _split_long_merge_short(self, sections: List[dict[str, Any]], max_content_length: int = 1000,
+                                min_content_length: int = 200) -> List[dict[str, Any]]:
+
+        self.log_step("step3", "长切短合:")
+        # 1.长的超过阈值max_content_length，需要二次切分
+        current_sections = []
+        for section in sections:
+            # section不大于阈值，放在列表中返回
+            # section大于阈值，切分完成后放列表返回。
+            sub_sections: List[dict[str, Any]] = self._split_long_section(section, max_content_length)
+            current_sections.extend(sub_sections)  # 把你的列表元素都放在我的列表里。
+
+        # 2.短的小于阈值min_content_length，进行合并
+        final_sections = self._merge_short_section(current_sections, min_content_length)
+        return final_sections
+
+    # ==================================================================================
+    #          3.1 长切
+    # ==================================================================================
+    def _split_long_section(self, section: dict[str, Any], max_content_length) -> List[Dict[str, Any]]:
+        """
+        长章节再次切分：
+            如果文档长度大于max_content_length，则进行二次切分
+            RecursiveCharacterTextSplitter：递归字符文本切分器
+        :param section:  章节信息
+        :param max_content_length: 最大切片阈值
+        :return: 切与不切的列表
+        """
+        self.log_step("step3.1", "长内容二次切分")
+        # 1.获取section对象属性
+        title = section.get("title", "")
+        parent_title = section.get("parent_title", "")
+        file_title = section.get("file_title", "")
+        body = section.get("body", "")
+
+        # 2.判断表格
+        # 利用工具类，将表格降维处理
+        if "<table>" in body:
+            self.logger.info(f"对表格进行降维处理")
+            body = MarkdownTableLinearizer.process(body)
+            section['body'] = body
+
+        # 3.对标题校验长度，超过50截断
+        if len(title) > 50:
+            title = title[:50]
+
+        # 4.拼接标题前缀
+        title_prefix = f"{title}\n\n"
+        # 5.计算标题前缀长度 + 内容长度
+        content_length = len(title_prefix) + len(body)
+
+        # 6.判断是否需要切分
+        if content_length <= max_content_length:
+            return [section]
+
+        # 7.计算body可用长度，判断长度是否小于等于0
+        body_available_length = max_content_length - len(title_prefix)
+        if body_available_length <= 0:
+            return [section]
+
+        # 8.需要继续切分
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=max_content_length,
+            chunk_overlap=0,
+            keep_separator=False,
+            # separators=["[SEP]","的",""]
+            separators=["\n\n", "\n", "。", "！", "？", "；", ".", "!", "?", ";", " ", ""],
+        )
+        #	判断切分数量结果，要么返回唯一原元素列表，要么返回多个新元素列表
+        texts: List[str] = splitter.split_text(body)
+
+        sub_section = []
+
+        for index, text in enumerate(texts):
+            sub_section.append({
+                "title": title,
+                "parent_title": parent_title,
+                "file_title": file_title,
+                "body": f"{title}-{index + 1} {text}",
+                "part": index + 1
+            })
+
+        # 9.返回
+        return sub_section
+
+    # ==================================================================================
+    #          3.2 短合
+    # ==================================================================================
+    def _merge_short_section(self, current_sections: List[dict[str, Any]], min_content_length: int = 100) -> List[
+        dict[str, Any]]:
+        """
+        贪心累加算法
+            1.累加过程可能超过阈值，可接受
+            2.孤儿小块，别忘记处理
+
+        :param current_sections: 当前章节列表，有小的块就需要被合并
+        :param min_content_length: 最小内容长度阈值，小于它就需要合并下一个内容到当前内容中。
+        :return:
+        """
+        self.log_step("step3.2", "短内容合并")
+        final_sections = []  # 合并章节内容后的列表
+        current_section = current_sections[0]  # 当前章节section对象
+
+        for next_section in current_sections[1:]:
+
+            # 同一个大章节下，两个小章节，可以合并
+            same_title = current_section.get("parent_title") == next_section.get("parent_title")
+            if same_title and len(current_section.get("body")) < min_content_length:
+                current_section["body"] = current_section["body"].rstrip() + "\n\n" + next_section["body"].lstrip()
+                current_section["title"] = current_section["parent_title"]
+            else:
+                final_sections.append(current_section)  # 遇到不同父标题，把之前同一个标题合并内容封箱。
+                current_section = next_section  # 重置
+
+        # 添加最后一部分
+        final_sections.append(current_section)
+
+        return final_sections
 
 
 if __name__ == '__main__':
@@ -565,4 +688,4 @@ if __name__ == '__main__':
     }
     state = create_default_state(**init)
     node = DocumentSplitNode()
-    print(node(state))
+    node(state)
