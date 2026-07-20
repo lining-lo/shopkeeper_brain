@@ -5,7 +5,7 @@
   使用BGE-M3生成稠密+稀疏混合向量存入Milvus，
   并将识别出的商品名回填至所有切片与流程状态，提供后续商品检索能力
 """
-
+import json
 from typing import Any, List, Dict, Tuple
 from langchain_core.messages import SystemMessage, HumanMessage
 from pymilvus import DataType
@@ -125,7 +125,8 @@ class ItemNameRecognitionNode(BaseNode):
             return file_title
 
         # 获取响应内容
-        item_name = llm_response.content.strip()
+        response_dict = json.loads(llm_response.content.strip())
+        item_name = response_dict.get("item_name")
 
         return item_name
 
