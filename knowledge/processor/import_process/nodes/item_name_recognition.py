@@ -30,7 +30,10 @@ class ItemNameRecognitionNode(BaseNode):
 
         # 3.调用LLM,获取客户端AIClients，识别商品名称。 提示词模板；  降级：file_title
         item_name = self._recognition_item_name(file_title, item_name_recognition_context)
-        # 4.商品名向量化
+
+        # 4.BGE-M3向量化
+        dense_vector,sparse_vector = self._embedding_item_name(item_name)
+
         # 5.存入milvus数据库
         # 6.更新state
         return state
@@ -119,6 +122,30 @@ class ItemNameRecognitionNode(BaseNode):
         item_name = llm_response.content.strip()
 
         return item_name
+
+    def _embedding_item_name(self, item_name) -> Tuple[List[float],Dict[int,float]]:
+        try:
+            bge_m3_client = AIClients.get_bge_m3_client()
+        except Exception as e:
+            self.logger.error(f"BGE-M3模型客户端初始化失败", e)
+            return None, None #降级处理
+
+        try:
+            embeddings = bge_m3_client.encode_documents([item_name])
+
+            dense_vector = embeddings["dense"][0].tolist()  # List[float], 长度 1024
+            sparse_matrix = embeddings["sparse"]  # CSR 稀疏矩阵
+            start_idx = sparse_matrix.indptr[0] #  indptr = [0,5]
+            end_idx = sparse_matrix.indptr[1]
+            token_ids = sparse_matrix.indices[start_idx:end_idx].tolist()  # indices = [11,22,33,44,55]
+            weights = sparse_matrix.data[start_idx:end_idx].tolist() # indices = [111,222,333,444,555]
+            sparse_vector = dict(zip(token_ids, weights))  # Dict[int, float]
+
+            # 返回 稠密向量，稀疏向量
+            return dense_vector,sparse_vector
+        except Exception as e:
+            self.logger.error(f"BGE-M3向量化商品名称失败", e)
+            return None,None
 
 
 if __name__ == '__main__':
