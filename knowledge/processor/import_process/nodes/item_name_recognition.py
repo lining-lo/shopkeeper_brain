@@ -86,7 +86,7 @@ class ItemNameRecognitionNode(BaseNode):
         total = 0
         for index, chunk in enumerate(chunks):
 
-            if not chunk and not isinstance(chunk, dict):
+            if not chunk or not isinstance(chunk, dict):
                 continue
 
             chunk_content = chunk.get("content", "")
@@ -210,7 +210,6 @@ class ItemNameRecognitionNode(BaseNode):
         for chunk in chunks:
             chunk["item_name"] = item_name
         state["item_name"] = item_name
-        state["chunks"] = chunks
 
 
 if __name__ == '__main__':
