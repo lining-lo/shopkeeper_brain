@@ -1,13 +1,13 @@
 """
   @Author:lining-lo
   @Time:2026/7/14
-  @Desc:pdf转md节点，用MinerU将pdf转化为md
+  @Desc:PDF转Markdown节点
+        调用MinerU命令行解析PDF，输出结构化md文件；
+        校验输入PDF路径与输出目录，转换成功后将md完整路径写入流程state，供后续切片节点读取
 """
 import subprocess
 from pathlib import Path
-from pprint import pprint
 from typing import Tuple
-
 from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import ValidationError, FileProcessingError, PdfConversionError
 from knowledge.processor.import_process.state import ImportGraphState, create_default_state
@@ -119,4 +119,19 @@ if __name__ == "__main__":
     node = PdfToMdNode()
     result = node(state)
 
-    pprint(result)
+    print(result)
+
+"""
+文件生成位置：D:\\资料\\查重_简洁报告单\\auto\\查重_简洁报告单.md
+
+打印结果：
+    {
+        "is_pdf_read_enabled": True,
+        "is_md_read_enabled": False,
+        "import_file_path": "D:\\查重_简洁报告单.pdf",
+        "file_dir": "D:\\资料",
+        "pdf_path": "D:\\查重_简洁报告单.pdf",
+        "md_path": "D:\\资料\\查重_简洁报告单\\auto\\查重_简洁报告单.md",
+        "file_title": "查重_简洁报告单"
+    }
+"""

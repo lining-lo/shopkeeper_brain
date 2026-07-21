@@ -13,9 +13,8 @@ from collections import deque
 from dataclasses import dataclass
 from logging import Logger
 from pathlib import Path
-from pprint import pprint
-from threading import RLock, Lock
-from typing import Tuple, List,Dict, Deque
+from threading import Lock
+from typing import Tuple, List, Dict, Deque
 from langchain_openai import OpenAI
 from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import StateFieldError, FileProcessingError, ValidationError
@@ -89,8 +88,7 @@ class ImageScanner:
         self.node_name = node_name
 
     def scan_img_dir(self, md_content: str, images_dir: Path, image_extensions: set[str], context_length: int = 200) -> \
-            List[
-                ImageInfo]:
+            List[ImageInfo]:
         # 扫描MD文档，找到每一个图片的上下文信息，返回一个图片信息列表
         # :param md_content: 完整md文档字符串
         # :param images_dir: 图片所在路径  E:\temp_dir\万用表RS-12的使用\auto\images
@@ -485,7 +483,6 @@ class MarkDownImageNode(BaseNode):
                                                                       imageinfo_list=imageinfo_list,
                                                                       vl_model=self.config.vl_model,
                                                                       requests_per_minute=self.config.requests_per_minute)
-        print(summaries)
 
         # 4.上传图片到Minio,替换MD中图片的路径，插入摘要信息
         # 替换图片路径和摘要的md文件内容。
@@ -505,6 +502,7 @@ class MarkDownImageNode(BaseNode):
 
 if __name__ == "__main__":
     setup_logging()
+
     init = {
         "is_pdf_read_enabled": True,
         "is_md_read_enabled": False,
@@ -514,6 +512,24 @@ if __name__ == "__main__":
         "file_title": "查重_简洁报告单",
         "md_path": "D:\\资料\\查重_简洁报告单\\auto\\查重_简洁报告单.md"
     }
+
     state = create_default_state(**init)
     node = MarkDownImageNode()
-    pprint(node(state))
+
+    print(node(state))
+
+"""
+文件备份位置：D:\\资料\\查重_简洁报告单\\auto\\查重_简洁报告单_new.md
+
+打印结果：
+    {
+        "is_pdf_read_enabled": True,
+        "is_md_read_enabled": False,
+        "import_file_path": "D:\\查重_简洁报告单.pdf",
+        "file_dir": "D:\\资料",
+        "pdf_path": "D:\\查重_简洁报告单.pdf",
+        "md_path": "D:\\资料\\查重_简洁报告单\\auto\\查重_简洁报告单.md",
+        "file_title": "查重_简洁报告单",
+        "md_content": "![RS PRO品牌标识](http://106.75.224.144:9000/knowledge-base-files/查重_简洁报告单/d329d008ba12d6f5eed073b52a378a6829cb4c1baef85b0d77934fa902bbb7fd.jpg)..."
+    }
+"""

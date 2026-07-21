@@ -3,11 +3,7 @@
   @Time:2026/7/13
   @Desc:入口节点,根据上传文件后缀，来决定走哪个分支节点：[.pdf,.md]
 """
-
-import json
 from pathlib import Path
-from pprint import pprint
-
 from knowledge.processor.import_process.base import BaseNode, T, setup_logging
 from knowledge.processor.import_process.exceptions import ValidationError
 from knowledge.processor.import_process.state import ImportGraphState, create_default_state
@@ -86,4 +82,16 @@ if __name__ == "__main__":
     node = EntryNode()
     processed_state = node(state)
 
-    pprint(processed_state)
+    print(processed_state)
+
+"""
+打印结果：
+    {
+        "is_pdf_read_enabled": True,
+        "is_md_read_enabled": False,
+        "import_file_path": "D:\\查重_简洁报告单.pdf",
+        "file_dir": "D:\\资料",
+        "pdf_path": "D:\\查重_简洁报告单.pdf",
+        "file_title": "查重_简洁报告单"
+    }
+"""
