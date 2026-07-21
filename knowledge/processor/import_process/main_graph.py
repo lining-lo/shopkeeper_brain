@@ -134,8 +134,8 @@ def run_import_graph(import_file_path: str, file_dir: str) -> dict:
 if __name__ == "__main__":
     setup_logging()
 
-    import_file_path = r"D:\资料\doc\万用表RS-12的使用.pdf"
-    file_dir = r"D:\资料\doc"
+    import_file_path = r"D:\查重_简洁报告单.pdf"
+    file_dir = r"D:\资料"
 
     final_state = run_import_graph(import_file_path, file_dir)
     print(json.dumps(final_state, indent=4, ensure_ascii=False))
