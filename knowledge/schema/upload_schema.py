@@ -1,3 +1,8 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/22
+  @Desc:知识库文件上传、任务进度查询接口响应实体定义
+"""
 from typing import List, Dict
 from openai import BaseModel
 from pydantic import Field

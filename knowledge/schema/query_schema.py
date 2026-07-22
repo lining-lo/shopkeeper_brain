@@ -1,5 +1,9 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/22
+  @Desc:向量知识库问答接口请求、响应Pydantic模型定义
+"""
 from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -15,7 +19,7 @@ class QueryResponse(BaseModel):
     message: str
     session_id: str
     answer: str
-    task_id:str
+    task_id: str
 
 
 class StreamSubmitResponse(BaseModel):
