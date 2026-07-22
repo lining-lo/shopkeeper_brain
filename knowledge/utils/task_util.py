@@ -1,6 +1,12 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/22
+  @Desc:内存型LangGraph任务进度管理器
+        管理文件导入、知识库问答任务运行状态；
+        记录任务全局状态、正在运行节点、已完成节点、各节点执行耗时与任务结果；
+"""
 from typing import Dict, List
 from collections import defaultdict
-
 
 """
 任务id: 主要追踪上传文件（任务）的状态流程的
@@ -8,13 +14,44 @@ from collections import defaultdict
 """
 # 只要访问不存在的 key，自动帮你初始化为 []
 _tasks_running_list: Dict[str, List[str]] = defaultdict(list)
+# {
+#     "task_001": ["pdf_to_md_node"],
+#     "task_002": ["document_split_node", "embedding_chunk_node"]
+# }
+
 _tasks_done_list: Dict[str, List[str]] = defaultdict(list)
+# {
+#     "task_001": ["upload_file", "entry_node"],
+#     "task_002": ["upload_file", "entry_node", "pdf_to_md_node"]
+# }
+
 _tasks_duration: Dict[str, Dict[str, float]] = defaultdict(dict)
+# {
+#     "task_001": {
+#         "上传文件": 0.23,
+#         "检查文件": 0.11
+#     },
+#     "task_002": {
+#         "上传文件": 0.18
+#     }
+# }
 
 # 只要访问不存在的 key，自动帮你初始化为 {} 查询时候用
 _tasks_result: Dict[str, Dict[str, str]] = defaultdict(dict)
+# {
+#     "task_001": {
+#         "error": "pdf文件损坏无法解析"
+#     },
+#     "task_002": {
+#         "answer": "这是知识库返回的答案文本"
+#     }
+# }
 
 _tasks_status: Dict[str, str] = {}
+# {
+#     "task_001": "failed",
+#     "task_002": "processing"
+# }
 
 TASK_STATUS_PROCESSING = "processing"  # 任务处理中
 TASK_STATUS_COMPLETED = "completed"  # 任务完成
@@ -24,10 +61,10 @@ _NODE_NAME_TO_CN: Dict[str, str] = {
     "upload_file": "上传文件",
     "entry_node": "检查文件",
     "pdf_to_md_node": "PDF转Markdown",
-    "md_to_img_node": "Markdown图片处理",
+    "md_img_node": "Markdown图片处理",
     "document_split_node": "文档切分",
-    "item_name_recognition_node": "主体名称识别",
-    "embedding_chunk_node": "向量生成",
+    "item_name_rec_node": "主体名称识别",
+    "bge_embedding_node": "向量生成",
     "import_milvus_node": "导入向量数据库",
     "__end__": "处理完成",
     # --- Query 流程节点（kb/query_process/main_graph.py）---
@@ -107,15 +144,16 @@ def get_task_result(task_id: str, key: str, default: str = "") -> str:
     return _tasks_result.get(task_id, {}).get(key, default)
 
 
-
 def add_node_duration(task_id: str, node_name: str, duration: float) -> None:
     """记录节点耗时（秒）"""
     cn_name = _to_cn(node_name)
     _tasks_duration[task_id][cn_name] = round(duration, 2)
 
+
 def get_node_durations(task_id: str) -> Dict[str, float]:
     """获取所有节点的耗时"""
     return dict(_tasks_duration.get(task_id, {}))
+
 
 def get_task_info(task_id: str) -> Dict[str, any]:
     """
@@ -129,4 +167,3 @@ def get_task_info(task_id: str) -> Dict[str, any]:
         "done_list": get_done_task_list(task_id),
         "durations": get_node_durations(task_id)
     }
-
