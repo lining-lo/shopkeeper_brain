@@ -9,14 +9,18 @@ import datetime
 import logging
 import os
 import shutil
+import time
 import uuid
 from typing import Tuple
 from dotenv import load_dotenv
 
 from knowledge.core.paths import get_local_base_dir
 from knowledge.processor.import_process.exceptions import FileProcessingError, MinioError
+from knowledge.processor.import_process.main_graph import kb_import_graph_app
+from knowledge.processor.import_process.state import create_default_state
 from knowledge.utils.client.storage_clients import StorageClients
-from knowledge.utils.task_util import update_task_status, add_running_task, add_done_task
+from knowledge.utils.task_util import update_task_status, add_running_task, add_done_task, TASK_STATUS_PROCESSING, \
+    TASK_STATUS_COMPLETED, TASK_STATUS_FAILED, add_node_duration
 
 # 加载配置文件
 load_dotenv()
@@ -32,6 +36,7 @@ class ImportFileService:
 
         # 2.设置任务状态 -> 开始
         add_running_task(task_id, "upload_file")
+        start_time = time.time()
 
         # 3.文件写入到本地
         file_dir = self._get_path_with_date()
@@ -42,13 +47,28 @@ class ImportFileService:
 
         # 5.设置任务状态 -> 结束
         add_done_task(task_id, "upload_file")
+        duration = time.time() - start_time
+        add_node_duration(task_id, "upload_file", duration)
 
         # 6.返回数据
         return task_id, file_dir, import_file_path
 
     def run_langgraph_import(self, task_id, file_dir, import_file_path):
         """开启 langgraph 流程，完成文件导入 milvus [7 个步骤]"""
-        pass
+        update_task_status(task_id, TASK_STATUS_PROCESSING)
+        try:
+            state = {
+                "task_id": task_id,
+                "import_file_path": import_file_path,
+                "file_dir": file_dir
+            }
+            init_state = create_default_state(**state)
+            for event in kb_import_graph_app.stream(init_state):
+                for node_name, state in event.items():
+                    print(f"task_id - {task_id} | 执行节点的名称 - {node_name}")
+            update_task_status(task_id, TASK_STATUS_COMPLETED)
+        except Exception as e:
+            update_task_status(task_id, TASK_STATUS_FAILED)
 
     def _get_task_id(self) -> str:
         return uuid.uuid4().hex[:8]
