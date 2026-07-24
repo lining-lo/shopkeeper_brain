@@ -1,8 +1,9 @@
-"""查询流程自定义异常类
-
-统一错误处理，提供更清晰的错误信息。
 """
-
+  @Author:lining-lo
+  @Time:2026/7/24
+  @Desc:查询流程自定义异常类
+        统一错误处理，提供更清晰的错误信息
+"""
 
 class QueryProcessError(Exception):
     """查询流程基础异常。

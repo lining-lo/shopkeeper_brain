@@ -1,3 +1,9 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/20
+  @Desc:表格线性化工具，自动解析HTML、Markdown表格，兼容单元格合并；
+        智能区分KV两列表格、常规表头表格，统一转为纯文本条目，方便文档切分与向量化。
+"""
 import re
 from typing import List
 from bs4 import BeautifulSoup

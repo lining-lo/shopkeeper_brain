@@ -1,6 +1,8 @@
-"""查询流程节点基类
-
-定义统一的节点接口规范，提供通用功能。
+"""
+  @Author:lining-lo
+  @Time:2026/7/24
+  @Desc:查询流程节点基类
+        定义统一的节点接口规范，提供通用功能
 """
 from abc import ABC, abstractmethod
 from typing import TypeVar, Optional
@@ -11,7 +13,6 @@ from knowledge.processor.query_process.exceptions import QueryProcessError
 from knowledge.utils.sse_util import push_sse_event, SSEEvent
 from knowledge.utils.task_util import add_running_task, add_done_task, get_task_status, get_running_task_list, \
     get_done_task_list
-
 
 T = TypeVar("T")  # 泛型状态类型
 
@@ -137,6 +138,7 @@ class BaseNode(ABC):
                            "done_list": get_done_task_list(task_id),
                            "running_list": get_running_task_list(task_id),
                        })
+
 
 def setup_logging(level: int = logging.INFO):
     """配置查询流程日志。

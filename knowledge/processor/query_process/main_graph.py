@@ -1,16 +1,10 @@
-import os
-
-
-
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
-
-# knowledge/processor/query_process/main_graph.py
-
-"""查询流程主图
-
-使用 LangGraph 构建知识库查询工作流。
 """
-
+  @Author:lining-lo
+  @Time:2026/7/24
+  @Desc:查询流程主图
+        使用 LangGraph 构建知识库查询工作流
+"""
+import os
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from dotenv import load_dotenv
@@ -23,6 +17,8 @@ from knowledge.processor.query_process.nodes.hyde_search import HyDeSearchNode
 from knowledge.processor.query_process.nodes.rrf import RrfNode
 from knowledge.processor.query_process.nodes.rerank import RerankNode
 from knowledge.processor.query_process.nodes.web_search_mcp import WebSearchMcpNode
+
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 # 加载环境变量
 load_dotenv()
 
@@ -91,7 +87,7 @@ def create_query_graph() -> CompiledStateGraph:
     # 2. 实例化节点
     nodes = {
         "item_name_confirm": ItemNameConfirmNode(),
-        "multi_search": lambda x: x,   # 虚拟节点（分发）
+        "multi_search": lambda x: x,  # 虚拟节点（分发）
         "search_embedding": VectorSearchNode(),
         "search_embedding_hyde": HyDeSearchNode(),
         "web_search_mcp": WebSearchMcpNode(),
@@ -141,7 +137,6 @@ def create_query_graph() -> CompiledStateGraph:
 # 创建全局图实例
 query_app = create_query_graph()
 
-
 if __name__ == "__main__":
     from knowledge.processor.query_process.base import setup_logging
 
@@ -150,6 +145,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print("开始测试: 查询流程主图 (main_graph)")
     print("=" * 60)
+
+    query_app.get_graph().print_ascii()
 
     # 测试场景：商品名明确，走完整 pipeline
     print("\n【场景】: 商品名明确，走完整 pipeline")
@@ -165,9 +162,9 @@ if __name__ == "__main__":
     print(f"  查询: {mock_state_1['original_query']}")
     print(f"  session_id: {mock_state_1['session_id']}")
 
-    result_1 = query_app.invoke(mock_state_1) #只能看到最后结果
-    #result_1 = query_app.stream(mock_state_1) #可以查看到每一个节点的输出
-    #与LLM中的llm.invoke()和 llm.stream()的作用不同。llm.stream()表示流式输出。
+    result_1 = query_app.invoke(mock_state_1)  # 只能看到最后结果
+    # result_1 = query_app.stream(mock_state_1) #可以查看到每一个节点的输出
+    # 与LLM中的llm.invoke()和 llm.stream()的作用不同。llm.stream()表示流式输出。
 
     print(f"\n  【结果】:")
     print(f"  商品名: {result_1.get('item_names')}")

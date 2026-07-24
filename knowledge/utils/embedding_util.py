@@ -1,8 +1,15 @@
-from typing import  List
+"""
+  @Author:lining-lo
+  @Time:2026/7/23
+  @Desc:BGE-M3批量生成稠密+稀疏混合向量，区分查询、文档两种编码模式，
+        自动转换稀疏CSR矩阵、numpy数组为Milvus兼容格式，附带参数合法性校验。
+"""
+from typing import List
 from pymilvus.model.hybrid import BGEM3EmbeddingFunction
 
 
-def generate_bge_m3_hybrid_vectors(model: BGEM3EmbeddingFunction, embedding_documents: List[str],is_query:bool=True):
+def generate_bge_m3_hybrid_vectors(model: BGEM3EmbeddingFunction, embedding_documents: List[str],
+                                   is_query: bool = True):
     """
     为文本生成混合向量嵌入（稠密 + 稀疏）
     Args:
@@ -20,7 +27,6 @@ def generate_bge_m3_hybrid_vectors(model: BGEM3EmbeddingFunction, embedding_docu
 
     if not all(isinstance(doc, str) and doc.strip() for doc in embedding_documents):
         raise ValueError("embedding_documents 中存在无效元素（空字符串或非字符串类型）")
-
 
     # 2. 生成嵌入
     """

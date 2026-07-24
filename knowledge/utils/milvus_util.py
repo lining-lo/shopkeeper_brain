@@ -1,16 +1,18 @@
-import os
+"""
+  @Author:lining-lo
+  @Time:2026/7/23
+  @Desc:Milvus混合检索工具类，适配BGE-M3稠密稀疏双向量检索；
+        封装检索请求构建、加权融合检索、item_name过滤条件生成；
+        两路向量共用过滤规则，支持权重调节，全链路参数校验与日志记录。
+"""
 import logging
-
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
 from dotenv import load_dotenv
-
-load_dotenv()
-
 from typing import Optional, List, Tuple, Any, Dict
 from pymilvus import MilvusClient, WeightedRanker, AnnSearchRequest
 
+load_dotenv()
 milvus_client: Optional[MilvusClient] = None
 
 

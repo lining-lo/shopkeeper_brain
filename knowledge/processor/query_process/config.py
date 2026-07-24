@@ -1,15 +1,14 @@
-# knowledge/processor/query_process/config.py
-
-"""查询流程配置管理模块
-
-集中管理所有配置项，支持环境变量覆盖。所有属性均采用懒加载模式。
 """
-
+  @Author:lining-lo
+  @Time:2026/7/24
+  @Desc:查询流程配置管理模块
+        集中管理所有配置项，支持环境变量覆盖。所有属性均采用懒加载模式
+"""
 from dataclasses import dataclass, field
 from typing import Optional
 import os
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
 
@@ -98,7 +97,6 @@ class QueryConfig:
     mcp_dashscope_base_url: str = field(
         default_factory=lambda: os.getenv("MCP_DASHSCOPE_BASE_URL", "")
     )
-
 
     @classmethod
     def from_env(cls) -> "QueryConfig":

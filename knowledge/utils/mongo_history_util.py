@@ -1,10 +1,15 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/23
+  @Desc:MongoDB聊天记录表curd工具，实现聊天消息新增/修改、按会话查历史、清空会话记录；
+        存储对话上下文、改写问句、识别品类等字段，全操作捕获异常打印日志；预留批量修改植物名的待实现方法。
+"""
 import logging
 from typing import List, Dict, Any
 from datetime import datetime
 from bson import ObjectId
 from pymongo.collection import Collection
 from pymongo import DESCENDING
-
 from knowledge.utils.client.storage_clients import StorageClients
 
 logger = logging.getLogger(__name__)

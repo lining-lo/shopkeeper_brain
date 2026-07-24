@@ -1,17 +1,15 @@
-# knowledge/processor/query_process/state.py
-
-"""查询流程状态类型定义
-
-定义完整的查询状态结构和辅助函数。
 """
-
+  @Author:lining-lo
+  @Time:2026/7/24
+  @Desc:查询流程状态类型
+        定义完整的查询状态结构和辅助函数
+"""
 from typing import TypedDict, List
 import copy
 
-
 class QueryGraphState(TypedDict):
-    """查询流程图状态。
-
+    """
+    查询流程图状态。
     包含整个查询流程中传递的所有数据。
     """
     session_id: str              # 会话ID
