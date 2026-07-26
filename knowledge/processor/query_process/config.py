@@ -70,7 +70,7 @@ class QueryConfig:
         default_factory=lambda: os.getenv("OPENAI_API_BASE", "")
     )
     openai_api_key: str = field(
-        default_factory=lambda: os.getenv("OPENAI_API_KEY", "")
+        default_factory=lambda: os.getenv("DASHSCOPE_API_KEY", "")
     )
     default_model: str = field(
         default_factory=lambda: os.getenv("MODEL", "")
