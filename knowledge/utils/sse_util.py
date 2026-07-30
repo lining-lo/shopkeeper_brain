@@ -1,3 +1,11 @@
+"""
+  @Author:lining-lo
+  @Time:2026/7/30
+  @Desc:FastAPI SSE大模型流式输出工具
+        基于生产者消费者模型，利用task_id绑定独立队列实现多任务隔离；
+        完成消息中转、SSE协议封装、连接监控、队列资源自动清理。
+        支持进度、流式增量、最终结果三类事件推送。
+"""
 import asyncio
 import json
 import logging
@@ -5,6 +13,34 @@ import queue
 from typing import Dict, Any, Optional, AsyncGenerator
 from fastapi import Request
 
+"""
+    前端请求 /start-task?task_id=task_001
+            ↓
+    create_sse_queue("task_001") 创建队列存入全局字典
+            ↓
+    开启后台LLM推理任务【生产者】
+            │
+            │ LLM每生成一段文字
+            ▼
+    push_sse_event("task_001", DELTA, 文字数据)
+            │
+            ▼
+    消息放入 task_001 对应的Queue队列
+    
+    # 另外一条链路（浏览器同时打开SSE长连接）
+    前端打开 /sse/stream?task_id=task_001
+            ↓
+    sse_generator 启动循环【消费者】
+            ↓
+    不断从 task_001 队列取消息
+            ↓
+    _sse_pack 组装SSE标准格式
+            ↓
+    yield 文本推送到浏览器，实现打字效果
+    
+    # 用户关闭浏览器
+    循环退出 → finally执行 → remove_sse_queue 销毁队列
+"""
 
 class SSEEvent:
     PROGRESS = "progress"  # 任务节点进度
@@ -14,6 +50,10 @@ class SSEEvent:
 
 # 全局 SSE 任务队列存储
 # Key: task_id, Value: queue.Queue
+# {
+#     "task_123": queue.Queue(),
+#     "task_456": queue.Queue()
+# }
 _task_stream: Dict[str, queue.Queue] = {}
 
 
@@ -40,6 +80,7 @@ def remove_sse_queue(task_id: str):
 
 def _sse_pack(event: str, data: Dict[str, Any]) -> str:
     """打包 SSE 消息格式"""
+    # event: delta \n data: {"content": "你好世界"} \n\n
     payload = json.dumps(data, ensure_ascii=False)
     return f"event: {event}\ndata: {payload}\n\n"
 
