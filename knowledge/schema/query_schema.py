@@ -3,7 +3,7 @@
   @Time:2026/7/22
   @Desc:向量知识库问答接口请求、响应Pydantic模型定义
 """
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -27,3 +27,17 @@ class StreamSubmitResponse(BaseModel):
     message: str
     session_id: str
     task_id: str
+
+class HistoryItem(BaseModel):
+    id: str = Field("", alias="_id")
+    session_id: str = ""
+    role: str = ""
+    text: str = ""
+    rewritten_query: str = ""
+    item_names: List[str] = Field(default_factory=list)  # noqa: PydanticFieldDefaultFactory
+    ts: Optional[float] = None
+
+
+class HistoryResponse(BaseModel):
+    session_id: str
+    items: List[HistoryItem]

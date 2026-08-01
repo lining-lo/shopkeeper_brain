@@ -5,6 +5,7 @@
         通过MCP StreamableHttp调用阿里云DashScope百炼联网搜索工具
         bailian_web_search,补充知识库外部互联网资料，丰富LLM回答信息
 """
+import json
 import asyncio
 from typing import Dict, Tuple
 from agents.mcp import MCPServerStreamableHttp
@@ -93,7 +94,6 @@ class WebSearchMcpNode(BaseNode):
 
 
 if __name__ == '__main__':
-    import json
 
     state = {
         "rewritten_query": "今天的小米汽车的股价是多少",

@@ -5,9 +5,15 @@
 """
 from functools import cache, lru_cache
 from knowledge.service.import_file_service import ImportFileService
+from knowledge.service.query_service import QueryService
 
 
 @cache  # 缓存满了，不清理。  OOM 问题
 # @lru_cache # 缓存满了，可以根据lru(最近最少使用)策略进行缓存清理
 def get_import_file_service() -> ImportFileService:
     return ImportFileService()
+
+
+@cache
+def get_query_service() -> QueryService:
+    return QueryService()

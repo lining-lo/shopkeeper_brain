@@ -156,7 +156,7 @@ if __name__ == "__main__":
         "original_query": "RS-12 数字万用表如何测量直流电压？",
         "session_id": "test_session_main_graph",
         "task_id": "test_task_001",
-        "is_stream": False,
+        "is_stream": True,
     }
 
     print(f"  查询: {mock_state_1['original_query']}")

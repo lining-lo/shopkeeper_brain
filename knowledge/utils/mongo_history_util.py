@@ -89,7 +89,3 @@ def clear_history(session_id: str) -> int:
     except Exception as e:
         logger.error(f"Error clearing history for session {session_id}: {e}")
         return 0
-
-def update_message_item_names(ids_to_update, confirmed):
-    #TODO 待实现
-    pass
