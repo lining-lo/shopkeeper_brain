@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Shopkeeper Brain</title>
+  <desc id="desc">基于 FastAPI 与 LangGraph 的私有文档 RAG 知识库问答系统，包含文档导入、混合检索、重排序、LLM 生成与 SSE 流式输出流程。</desc>
+
+  <rect width="1200" height="400" rx="26" fill="#0B1220"/>
+
+  <g id="title-block" transform="translate(56 44)">
+    <rect x="0" y="4" width="46" height="5" rx="2.5" fill="#5B8DEF"/>
+    <text x="0" y="34" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" letter-spacing="3" fill="#93A4BD">RAG KNOWLEDGE BASE</text>
+    <text x="0" y="104" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="56" font-weight="700" fill="#E6EDF7">Shopkeeper Brain</text>
+    <text x="0" y="156" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="21" fill="#C7D3E6">基于 FastAPI + LangGraph 的私有文档知识库问答系统</text>
+    <text x="0" y="190" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="21" fill="#C7D3E6">PDF/Markdown 导入 · 混合检索 · SSE 流式问答</text>
+    <text x="0" y="262" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#93A4BD">FastAPI · LangGraph · BGE-M3 · Milvus · MongoDB · MinIO</text>
+  </g>
+
+  <g id="query-pipeline" transform="translate(600 44)">
+    <text x="0" y="34" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" letter-spacing="2" fill="#93A4BD">QUERY PIPELINE</text>
+    <g transform="translate(0 66)">
+      <g>
+        <rect x="0" y="0" width="96" height="84" rx="12" fill="#111A2E" stroke="#2A3A5C"/>
+        <circle cx="16" cy="16" r="3" fill="#5B8DEF"/>
+        <text x="48" y="46" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">提问</text>
+        <text x="48" y="70" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">输入</text>
+      </g>
+      <path d="M100 42 L112 42" stroke="#5B8DEF" stroke-width="3" marker-end="url(#arrow)"/>
+      <g transform="translate(116 0)">
+        <rect x="0" y="0" width="96" height="84" rx="12" fill="#111A2E" stroke="#2A3A5C"/>
+        <circle cx="16" cy="16" r="3" fill="#38BDF8"/>
+        <text x="48" y="46" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">混合</text>
+        <text x="48" y="70" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">检索</text>
+      </g>
+      <path d="M216 42 L228 42" stroke="#5B8DEF" stroke-width="3" marker-end="url(#arrow)"/>
+      <g transform="translate(232 0)">
+        <rect x="0" y="0" width="96" height="84" rx="12" fill="#111A2E" stroke="#2A3A5C"/>
+        <circle cx="16" cy="16" r="3" fill="#5B8DEF"/>
+        <text x="48" y="46" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">RRF +</text>
+        <text x="48" y="70" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">重排序</text>
+      </g>
+      <path d="M332 42 L344 42" stroke="#5B8DEF" stroke-width="3" marker-end="url(#arrow)"/>
+      <g transform="translate(348 0)">
+        <rect x="0" y="0" width="96" height="84" rx="12" fill="#111A2E" stroke="#2A3A5C"/>
+        <circle cx="16" cy="16" r="3" fill="#38BDF8"/>
+        <text x="48" y="46" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">LLM</text>
+        <text x="48" y="70" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#E6EDF7">生成</text>
+      </g>
+      <path d="M448 42 L460 42" stroke="#5B8DEF" stroke-width="3" marker-end="url(#arrow)"/>
+      <g transform="translate(464 0)">
+        <rect x="0" y="0" width="96" height="84" rx="12" fill="#16305A" stroke="#5B8DEF"/>
+        <circle cx="16" cy="16" r="3" fill="#5B8DEF"/>
+        <text x="48" y="46" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#FFFFFF">SSE</text>
+        <text x="48" y="70" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="19" fill="#FFFFFF">流式输出</text>
+      </g>
+    </g>
+    <text x="0" y="212" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" fill="#C7D3E6">输入问题，实时返回带文档来源的精准回答</text>
+    <text x="0" y="240" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" fill="#C7D3E6">文档导入（8000 端口）与智能问答（8001 端口）双服务</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5B8DEF"/>
+    </marker>
+  </defs>
+</svg>
